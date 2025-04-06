@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <link rel="icon" href="icon.png" type="image/png" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام الطلبات</title>
+  <style>
+    body { font-family: Arial, sans-serif; direction: rtl; background-color: #f0f0f0; margin: 0; padding: 0; text-align: center; }
+    header { background-color: #4CAF50; color: white; padding: 15px; text-align: center; font-size: 22px;}
+    .menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 20px; }
+    .menu-item { background: white; width: 200px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding-bottom: 10px; }
+    .menu-item img { width: 100%; height: 150px; border-top-left-radius: 10px; border-top-right-radius: 10px; }
+    .menu-item button { background-color: #4CAF50; color: white; border: none; padding: 8px; margin-top: 10px; border-radius: 5px; cursor: pointer; font-size: 14px; width: 90%; }
+    .cart-area { background: white; padding: 20px; margin: 20px auto; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 400px; }
+    .cart-area h2::before { content: "🛒 "; }
+    .order-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: flex; justify-content: space-between; font-size: 14px; align-items: center; }
+    .order-item input { width: 40px; text-align: center; }
+    .delete-btn { background-color: red; color: white; border: none; padding: 5px; font-size: 12px; border-radius: 5px; cursor: pointer; }
+    .total { font-weight: bold; color: green; }
+    .send-btn { background-color: orange; color: white; border: none; padding: 6px; font-size: 14px; border-radius: 5px; cursor: pointer; width: 60%; margin-top: 10px; }
+    .send-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+    .payment-note { font-size: 12px; color: red; margin-top: 5px; }
+
+    /* تغيير حدود خانة البحث إلى سوداء */
+    .search-box { margin: 20px auto; }
+    .search-box input { 
+      padding: 10px 20px 10px 35px; 
+      width: 100%; 
+      max-width: 350px; 
+      font-size: 14px; 
+      border-radius: 5px; 
+      border: 2px solid black; /* حدود سوداء */
+      background: url('https://img.icons8.com/ios/452/search.png') no-repeat 10px center; 
+      background-size: 20px; 
+    }
+    .search-box input:focus { 
+      border-color: #4CAF50; 
+    }
+
+    /* رسالة عند إضافة المنتج إلى السلة */
+    .message { 
+      position: fixed; 
+      top: 20px; 
+      right: 0; 
+      left: 0; 
+      background-color: rgba(76, 175, 80, 0.9); /* لون قريب من لون الخلفية */
+      color: white; 
+      font-size: 16px; 
+      font-weight: bold; 
+      padding: 10px 20px; 
+      text-align: center; 
+      z-index: 9999;
+      display: none; /* إخفاء الرسالة أولاً */
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    p, span, h1, h2, h3, h4, h5, h6, div, header {
+    cursor: default !important;
+}
+
+
+
+
+  </style>
+</head>
+<body>
+
+<header>نظام الطلبات</header>
+
+<!-- رسالة إضافة إلى السلة -->
+<div id="add-to-cart-message" class="message">تمت إضافة المنتج إلى السلة</div>
+
+<div class="search-box">
+  <input type="text" id="search-input" placeholder="🔍 ابحث عن منتج" onkeyup="searchProducts()">
+</div>
+
+<div class="menu" id="menu"></div>
+
+<div class="cart-area">
+  <h2>السلة</h2> 
+  <div id="cart-items"></div>
+  <hr>
+  <p>رسوم التوصيل: <span id="delivery-fee">1</span> ريال</p>
+  <p class="total">المجموع: <span id="total">0</span> ريال</p>
+  <button class="send-btn" id="send-btn" onclick="sendOrder()" disabled>إرسال الطلب</button>
+  <p class="payment-note">الدفع عند الاستلام</p>
+</div>
+
+<script>
+  const menuItems = [
+  {name: "صدور الدجاج", price: 19, img: "1.png", maxQuantity: 5},
+    {name: "بصل (بالحبة)", price: 1, img: "2.png", maxQuantity: 5},
+    {name: "جزر (بالحبة)", price: 1, img: "3.png", maxQuantity: 5},
+    {name: "زبيب", price: 1, img: "4.png", maxQuantity: 5},
+    {name: "تفاح أحمر (بالحبة)", price: 15, img: "5.png", maxQuantity: 5},
+    {name: "خيار (بالحبة)", price: 8, img: "10.png", maxQuantity: 5},
+    {name: "طماطم (بالحبة)", price: 8, img: "11.png", maxQuantity: 5},
+    {name: "فلفل رومي أخضر (بالحبة)", price: 18, img: "6.png", maxQuantity: 5},
+    {name: "فلفل رومي أصفر (بالحبة)", price: 7, img: "7.png", maxQuantity: 5},
+    {name: "فلفل رومي أحمر (بالحبة)", price: 8, img: "8.png", maxQuantity: 5},
+    {name: "فلفل رومي ملون (بالحبة)", price: 8, img: "9.png", maxQuantity: 5},
+    {name: "حليب نادك (800 مليلتر)", price: 8, img: "13.png", maxQuantity: 5},
+    {name: "حليب نادك (2.9 لتر)", price: 8, img: "14.png", maxQuantity: 5}
+
+  ];
+
+  let cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+  function renderMenu() {
+    const menuDiv = document.getElementById('menu');
+    menuDiv.innerHTML = '';
+    menuItems.forEach((item, index) => {
+      const div = document.createElement('div');
+      div.className = 'menu-item';
+      div.innerHTML = 
+        `<img src="${item.img}" alt="${item.name}">
+        <p>${item.name} - ${item.price} ريال</p>
+        <button onclick="addToCart(${index})">إضافة إلى السلة</button>`;
+      menuDiv.appendChild(div);
+    });
+  }
+
+  function renderCart() {
+    const cartDiv = document.getElementById('cart-items');
+    cartDiv.innerHTML = '';
+    let total = 0;
+    cart.forEach((item, index) => {
+      const div = document.createElement('div');
+      div.className = 'order-item';
+      div.innerHTML = 
+        `<span>${item.name}</span>
+        <input type="number" value="${item.quantity}" min="1" max="${item.maxQuantity}" onchange="updateQuantity(${index}, this.value)">
+        <span>${item.price * item.quantity} ريال</span>
+        <button class="delete-btn" onclick="removeFromCart(${index})">حذف</button>`;
+      total += item.price * item.quantity;
+      cartDiv.appendChild(div);
+    });
+
+    document.getElementById('total').textContent = total + 1;
+    document.getElementById('send-btn').disabled = cart.length === 0;
+    localStorage.setItem('cart', JSON.stringify(cart));
+  }
+
+  function addToCart(index) {
+    const itemInCart = cart.find(item => item.name === menuItems[index].name);
+    if (itemInCart) {
+      if (itemInCart.quantity < menuItems[index].maxQuantity) {
+        itemInCart.quantity += 1;
+      } else {
+        alert(`لا يمكنك إضافة أكثر من ${menuItems[index].maxQuantity} قطع من هذا المنتج.`);
+      }
+    } else {
+      cart.push({...menuItems[index], quantity: 1});
+    }
+    renderCart();
+    showAddToCartMessage(); // إظهار رسالة عند إضافة المنتج للسلة
+  }
+
+  function updateQuantity(index, value) {
+    let quantity = parseInt(value);
+    if (quantity > cart[index].maxQuantity) {
+      alert(`الحد الأقصى لهذا المنتج هو ${cart[index].maxQuantity}`);
+      cart[index].quantity = cart[index].maxQuantity;
+    } else if (quantity < 1) {
+      cart[index].quantity = 1;
+    } else {
+      cart[index].quantity = quantity;
+    }
+    renderCart();
+  }
+
+  function removeFromCart(index) {
+    cart.splice(index, 1); // حذف العنصر من السلة
+    renderCart(); // إعادة عرض السلة بعد الحذف
+  }
+
+  function showAddToCartMessage() {
+    const messageDiv = document.getElementById('add-to-cart-message');
+    messageDiv.style.display = 'block'; // إظهار الرسالة
+    setTimeout(() => {
+      messageDiv.style.display = 'none'; // إخفاء الرسالة بعد ثانيتين
+    }, 2000);
+  }
+
+  function sendOrder() {
+    const phone = "+966505538027"; // رقم الجوال الخاص بالواتساب
+    let orderDetails = cart.map(item => 
+      `${item.name} - الكمية: ${item.quantity} - السعر: ${item.price * item.quantity} ريال`
+    ).join("\n"); // تنسيق تفاصيل الطلب لكل منتج
+
+    let total = parseInt(document.getElementById('total').textContent);  // المجموع بما في ذلك رسوم التوصيل
+    let deliveryFee = document.getElementById('delivery-fee').textContent; // رسوم التوصيل
+
+    // رسالة الواتساب
+    let message = `طلب جديد:\n${orderDetails}\n\nرسوم التوصيل: ${deliveryFee} ريال\nالمجموع: ${total} ريال\nالدفع عند الاستلام`;
+
+    // تحويل الرسالة إلى رابط الواتساب
+    let whatsappURL = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.location.href = whatsappURL;  // توجيه المستخدم إلى الواتساب مع الرسالة
+  }
+
+  function searchProducts() {
+    const searchQuery = document.getElementById('search-input').value.toLowerCase();
+    const filteredMenu = menuItems.filter(item => item.name.toLowerCase().includes(searchQuery));
+    
+    const menuDiv = document.getElementById('menu');
+    menuDiv.innerHTML = '';
+    filteredMenu.forEach((item, index) => {
+      const div = document.createElement('div');
+      div.className = 'menu-item';
+      div.innerHTML = 
+        `<img src="${item.img}" alt="${item.name}">
+        <p>${item.name} - ${item.price} ريال</p>
+        <button onclick="addToCart(${index})">إضافة إلى السلة</button>`;
+      menuDiv.appendChild(div);
+    });
+  }
+
+  renderMenu();
+  renderCart();
+
+  document.addEventListener("contextmenu", function (e) {
+    e.preventDefault();
+});
+
+document.addEventListener("selectstart", function (e) {
+    e.preventDefault();
+});
+
+document.addEventListener("copy", function (e) {
+    e.preventDefault();
+});
+
+document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey && ["c", "u", "s", "p"].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+    }
+});
+
+</script>
+
+</body>
+</html>
